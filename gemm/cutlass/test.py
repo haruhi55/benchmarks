@@ -58,6 +58,11 @@ def run_test(
     else:
         raise ValueError("Unittest failed")
 
+    warm_up = 10
+    for _ in range(warm_up):
+        cutlass_gemm(a, b, c, M, N, K, kTM, kTN, kTK, *warp_layout)
+    torch.cuda.synchronize()
+
     start_event = torch.cuda.Event(enable_timing=True)
     end_event = torch.cuda.Event(enable_timing=True)
 
@@ -76,12 +81,24 @@ def run_test(
 if __name__ == "__main__":
     kM = 4096
     kN = 4096
-    kK = 2048
+    kK = 4096
 
-    kTM = 128
-    kTN = 128
-    kTK = 128
+    kTMs = [32, 64, 128]
+    kTNs = [32, 64, 128]
+    kTKs = [32, 64, 128]
 
-    time = run_test(kM, kN, kK, kTM, kTN, kTK, (2, 2))
+    warp_layouts = [(1, 2), (2, 2), (2, 4)]
 
-    print("Elapsed time: {:.4f} ms".format(time))
+    with open("A100.tsv", "w") as flog:
+        flog.write("[kTM, kTN, kTK]\tThreads\tTime (ms)\n")
+
+        for warp_layout in warp_layouts:
+            threads = warp_layout[0] * warp_layout[1] * 32
+            for kTM in kTMs:
+                for kTN in kTNs:
+                    for kTK in kTKs:
+                        print(
+                            f"Testing [kTM, kTN, kTK] = [{kTM}, {kTN}, {kTK}]")
+                        time = run_test(kM, kN, kK, kTM, kTN, kTK, warp_layout)
+                        flog.write("[{}, {}, {}]\t{}\t{:.4f}\n".format(
+                            kTM, kTN, kTK, threads, time))
