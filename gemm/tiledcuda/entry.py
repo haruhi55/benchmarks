@@ -1,4 +1,4 @@
-config = """#include "gemm.hpp"
+config = """#include "../gemm.hpp"
 
 static constexpr int kWarpPerRow = {kWarpPerRow};
 static constexpr int kWarpPerCol = {kWarpPerCol};
@@ -15,7 +15,7 @@ static constexpr int kRK = {kRK};
 """
 
 kernel_entry = """
-extern "C" int kernel_entry(const __half* A, const __half* B, float* C) {
+extern "C" int kernel_entry(const __half* A, const __half* B, __half* C) {
     using InType = __half;
     using AccType = float;
 
@@ -35,7 +35,8 @@ extern "C" int kernel_entry(const __half* A, const __half* B, float* C) {
               typename Config::SharedB, typename Config::RegB,
               typename Config::G2SLoaderB, typename Config::S2RLoaderB,
               typename Config::GlobalC, typename Config::SharedC,
-              typename Config::RegC, typename Config::R2SStorerC,
+              typename Config::RegC, typename Config::RegCHalf,
+              typename Config::ConvertHalf, typename Config::R2SStorerC,
               typename Config::S2GStorerC>;
 
     static constexpr int smem_size_inputs = kTK * (kTN + kTM) * sizeof(InType);

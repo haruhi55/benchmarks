@@ -13,9 +13,6 @@ cutlass_include_dir = os.path.join(os.path.dirname(__file__),
                                    "../../3rd-party/cutlass/include")
 tiledcuda_include_dir = os.path.join(os.path.dirname(__file__),
                                      "../../3rd-party/TiledCUDA/include/")
-utils_include_dir = os.path.join(os.path.dirname(__file__),
-                                 ("../../3rd-party/TiledCUDA/examples/"
-                                  "cpp/01_gemm/02_gemm_all_mem"))
 
 
 class Compile:
@@ -106,8 +103,8 @@ class Compile:
             "--expt-relaxed-constexpr", "--disable-warnings",
             "--compiler-options", "'-fPIC'", "--shared", source_path, "-lcuda",
             f"-gencode=arch=compute_{self.cc},code=sm_{self.cc}",
-            f"-I{cutlass_include_dir}", f"-I{tiledcuda_include_dir}",
-            f"-I{utils_include_dir}", "-o", lib_path
+            f"-I{cutlass_include_dir}", f"-I{tiledcuda_include_dir}", "-o",
+            lib_path
         ]
         try:
             ret = subprocess.run(command, timeout=timeout)

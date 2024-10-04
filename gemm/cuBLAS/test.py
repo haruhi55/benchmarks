@@ -20,7 +20,7 @@ def gemm(m: int,
 if __name__ == '__main__':
     M = 4096
     N = 4096
-    K = 2048
+    K = 4096
 
     device = torch.device("cuda")
     dtype = torch.float16
@@ -41,4 +41,4 @@ if __name__ == '__main__':
         raise ValueError("Failed unittest.")
 
     gemm(M, N, K, a, b, c, time, 20, 5)
-    print("Elapsed time: {:.3} ms".format(time.item()))
+    print("Elapsed time: {:.4} ms".format(time.item()))
