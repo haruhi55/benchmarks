@@ -43,7 +43,7 @@ def run_single_test(M: int, N: int, K: int, kTM: int, kTN: int, kTK: int,
     shm_inputs = ((kTM * kTK + kTN * kTK) * 2) / 1024
     shm_output = ((kTM * kTN) * 4) / 1024
     shm_size = max(shm_inputs, shm_output)
-    if shm_size > 120:
+    if shm_size > 140:
         print((f"{shm_size}KB shared memory "
                "is required. Exceed maximal capacity"))
         return
@@ -120,9 +120,9 @@ def run_tests(kTMs, kTNs, kTKs, kRKs, warp_layouts, flog):
 
 
 if __name__ == "__main__":
-    kM = 512
-    kN = 512
-    kK = 512
+    kM = 4096
+    kN = 4096
+    kK = 4096
 
     kTMs = [32, 64, 128]
     kTNs = [32, 64, 128]

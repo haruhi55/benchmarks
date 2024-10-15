@@ -10,9 +10,9 @@ import torch
 __all__ = ["Compile"]
 
 cutlass_include_dir = os.path.join(os.path.dirname(__file__),
-                                   "../../3rd-party/cutlass/include")
+                                   "../../../3rd-party/cutlass/include")
 tiledcuda_include_dir = os.path.join(os.path.dirname(__file__),
-                                     "../../3rd-party/TiledCUDA/include/")
+                                     "../../../3rd-party/TiledCUDA/include/")
 
 
 class Compile:
