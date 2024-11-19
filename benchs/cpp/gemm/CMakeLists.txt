@@ -16,3 +16,6 @@ include_directories("${PROJECT_SOURCE_DIR}/cutlass")
 
 add_executable(bench_gemm bench.cu)
 target_link_libraries(bench_gemm ${CUDA_CUBLAS_LIBRARIES})
+
+add_executable(bench_gemm_v2 bench_v2.cu)
+target_link_libraries(bench_gemm_v2 ${CUDA_CUBLAS_LIBRARIES})

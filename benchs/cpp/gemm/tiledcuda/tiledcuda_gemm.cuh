@@ -100,7 +100,8 @@ template <typename InType, typename AccType,                  //
           typename G2SLoaderB, typename S2RLoaderB,           //
           typename GlobalC, typename SharedC, typename RegC,  //
           typename R2SStorerC, typename S2GStorerC>
-__global__ void gemm(const InType* dA, const InType* dB, AccType* dC) {
+__global__ void tiledcuda_gemm(const InType* dA, const InType* dB,
+                               AccType* dC) {
     int offset_a = blockIdx.x * kTM * kK;
     int offset_b = blockIdx.y * kTN * kK;
     int offset_c = blockIdx.x * kTM * kN + blockIdx.y * kTN;
@@ -146,7 +147,7 @@ __global__ void gemm(const InType* dA, const InType* dB, AccType* dC) {
             s2r_a(sAs(k2), rA);
             s2r_b(sBs(k2), rB);
 
-            compute::gemm_(rA, rB, acc);
+            compute::gemm(rA, rB, acc);
         }
     }
     r2s_c(acc, sC);
@@ -154,49 +155,55 @@ __global__ void gemm(const InType* dA, const InType* dB, AccType* dC) {
     s2g_c(sC, gC);
 }
 
-template <typename InType, typename AccType,            //
-          const int kM, const int kN, const int kK,     //
-          const int kTM, const int kTN, const int kTK,  //
-          const int kWarpPerRow, const int kWarpPerCol>
-void tiledcuda_gemm(const InType* dA, const InType* dB, AccType* dC) {
-    using WholeShape = GemmShape<kM, kN, kK>;
-    using CtaTileShape = GemmShape<kTM, kTN, kTK>;
-    using WarpLayout = tl::RowMajor<kWarpPerRow, kWarpPerCol>;
+// // template <typename InType, typename AccType,            //
+// //           const int kM, const int kN, const int kK,     //
+// //           const int kTM, const int kTN, const int kTK,  //
+// //           const int kWarpPerRow, const int kWarpPerCol>
+// template <typename InType, typename AccType, typename WholeShape,
+//           typename CtaTileShape, typename WarpLayout>
+// void tiledcuda_gemm(const InType* dA, const InType* dB, AccType* dC) {
+//     static constexpr int kM = dim_size<0, WholeShape>;
+//     static constexpr int kN = dim_size<1, WholeShape>;
+//     static constexpr int kK = dim_size<2, WholeShape>;
+//     static constexpr int kTM = dim_size<0, CtaTileShape>;
+//     static constexpr int kTN = dim_size<1, CtaTileShape>;
+//     static constexpr int kTK = dim_size<2, CtaTileShape>;
+//     static constexpr int kRK = 32;
 
-    static constexpr int kRK = 32;
+//     using Config = KeGemmTraits<InType, AccType, WholeShape, CtaTileShape,
+//     kRK,
+//                                 WarpLayout>;
 
-    using Config = KeGemmTraits<InType, AccType, WholeShape, CtaTileShape, kRK,
-                                WarpLayout>;
+//     auto kernel =
+//         &gemm<InType, AccType, kM, kN, kK, kTM, kTN, kTK,
+//               typename Config::GIteratorA, typename Config::SIteratorA,
+//               typename Config::SharedA, typename Config::RegA,
+//               typename Config::G2SLoaderA, typename Config::S2RLoaderA,
+//               typename Config::GIteratorB, typename Config::SIteratorB,
+//               typename Config::SharedB, typename Config::RegB,
+//               typename Config::G2SLoaderB, typename Config::S2RLoaderB,
+//               typename Config::GlobalC, typename Config::SharedC,
+//               typename Config::RegC, typename Config::R2SStorerC,
+//               typename Config::S2GStorerC>;
 
-    auto kernel =
-        &gemm<InType, AccType, kM, kN, kK, kTM, kTN, kTK,
-              typename Config::GIteratorA, typename Config::SIteratorA,
-              typename Config::SharedA, typename Config::RegA,
-              typename Config::G2SLoaderA, typename Config::S2RLoaderA,
-              typename Config::GIteratorB, typename Config::SIteratorB,
-              typename Config::SharedB, typename Config::RegB,
-              typename Config::G2SLoaderB, typename Config::S2RLoaderB,
-              typename Config::GlobalC, typename Config::SharedC,
-              typename Config::RegC, typename Config::R2SStorerC,
-              typename Config::S2GStorerC>;
+//     static constexpr int smem_size_inputs = kTK * (kTN + kTM) *
+//     sizeof(InType); static constexpr int smem_size_accumulators = kTM * kTN *
+//     sizeof(AccType); static constexpr int smem_size = smem_size_inputs >
+//     smem_size_accumulators
+//                                          ? smem_size_inputs
+//                                          : smem_size_accumulators;
 
-    static constexpr int smem_size_inputs = kTK * (kTN + kTM) * sizeof(InType);
-    static constexpr int smem_size_accumulators = kTM * kTN * sizeof(AccType);
-    static constexpr int smem_size = smem_size_inputs > smem_size_accumulators
-                                         ? smem_size_inputs
-                                         : smem_size_accumulators;
+//     const int kMaxSmemPerBlock = 48 * 1024;
+//     if (smem_size > kMaxSmemPerBlock) {
+//         cudaFuncSetAttribute(
+//             kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+//     }
 
-    const int kMaxSmemPerBlock = 48 * 1024;
-    if (smem_size > kMaxSmemPerBlock) {
-        cudaFuncSetAttribute(
-            kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-    }
+//     int block_x = (kM + kTM - 1) / kTM;
+//     int block_y = (kN + kTN - 1) / kTN;
 
-    int block_x = (kM + kTM - 1) / kTM;
-    int block_y = (kN + kTN - 1) / kTN;
+//     dim3 grid(block_x, block_y, 1);
+//     dim3 block(Config::kThreads, 1, 1);
 
-    dim3 grid(block_x, block_y, 1);
-    dim3 block(Config::kThreads, 1, 1);
-
-    kernel<<<grid, block, smem_size>>>(dA, dB, dC);
-}
+//     kernel<<<grid, block, smem_size>>>(dA, dB, dC);
+// }
