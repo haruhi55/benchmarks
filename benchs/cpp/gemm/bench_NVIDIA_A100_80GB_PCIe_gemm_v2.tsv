@@ -1,2 +1,2 @@
-[M, N, K]	[kTM, kTN, kTK]	[kWarpPerRow, kWarpPerCol]	CutlassTime(ms)	TiledCUDATime(ms)	Ratio
-[4096, 4096, 2048]	[64, 32, 32]	[2, 2]	0.6163	1.1347	1.8412
+[M, N, K]	[kTM, kTN, kTK]	[kWarpPerRow, kWarpPerCol]	CublasTime(ms)	CutlassTime(ms)	TiledCUDATime(ms)	CutlassRatio	TiledCUDARatio
+[4096, 4096, 2048]	[128, 128, 128]	[2, 2]	0.2730(ms)	0.3474(ms)	0.6048(ms)	1.2727	2.2153

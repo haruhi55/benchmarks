@@ -19,9 +19,9 @@ void run_test_v2(std::ofstream& fout) {
     static constexpr int kN = 4096;
     static constexpr int kK = 2048;
 
-    static constexpr int kTM = 64;
-    static constexpr int kTN = 32;
-    static constexpr int kTK = 32;
+    static constexpr int kTM = 128;
+    static constexpr int kTN = 128;
+    static constexpr int kTK = 128;
 
     static constexpr int kWarpPerRow = 2;
     static constexpr int kWarpPerCol = 2;
@@ -79,10 +79,14 @@ void run_test_v2(std::ofstream& fout) {
     thrust::host_vector<AccType> h_c2(kM * kN);
     thrust::fill(h_c2.begin(), h_c2.end(), 0.);
 
+    thrust::host_vector<__half> h_c3(kM * kN);
+    thrust::fill(h_c3.begin(), h_c3.end(), 0.);
+
     thrust::device_vector<Element> d_a = h_a;
     thrust::device_vector<Element> d_b = h_b;
     thrust::device_vector<Element> d_c = h_c;
     thrust::device_vector<AccType> d_c2 = h_c2;
+    thrust::device_vector<__half> d_c3 = h_c3;
 
     const Element* dA = thrust::raw_pointer_cast(d_a.data());
     const Element* dB = thrust::raw_pointer_cast(d_b.data());
@@ -91,6 +95,10 @@ void run_test_v2(std::ofstream& fout) {
     const InType* dA2 = reinterpret_cast<const InType*>(dA);
     const InType* dB2 = reinterpret_cast<const InType*>(dB);
     AccType* dC2 = thrust::raw_pointer_cast(d_c2.data());
+
+    const __half* dA3 = reinterpret_cast<const __half*>(dA);
+    const __half* dB3 = reinterpret_cast<const __half*>(dB);
+    __half* dC3 = thrust::raw_pointer_cast(d_c3.data());
 
     auto cute_gemm_kernel = &cute_gemm<Element, kWarpPerRow, kWarpPerCol, kM,
                                        kN, kK, kTM, kTN, kTK>;
@@ -126,16 +134,22 @@ void run_test_v2(std::ofstream& fout) {
     cudaDeviceSynchronize();
     float tiledcuda_time = timer.stop() / iters;
 
+    float cublas_time =
+        cublas_hgemm(kM, kN, kK, dA3, dB3,
+                     thrust::raw_pointer_cast(d_c3.data()), true /*timeit*/);
+
     std::cout << "[" << kM << ", " << kN << ", " << kK << "]\t[" << kTM << ", "
               << kTN << ", " << kTK << "]\t[" << kWarpPerRow << ", "
-              << kWarpPerCol << "]\t" << cutlass_time << "(ms)\t"
-              << tiledcuda_time << "(ms)\t" << tiledcuda_time / cutlass_time
-              << std::endl;
+              << kWarpPerCol << "]\t" << cublas_time << "(ms)\t" << cutlass_time
+              << "(ms)\t" << tiledcuda_time << "(ms)\t"
+              << cutlass_time / cublas_time << "\t"
+              << tiledcuda_time / cublas_time << std::endl;
 
     fout << "[" << kM << ", " << kN << ", " << kK << "]\t[" << kTM << ", "
          << kTN << ", " << kTK << "]\t[" << kWarpPerRow << ", " << kWarpPerCol
-         << "]\t" << cutlass_time << "\t" << tiledcuda_time << "\t"
-         << tiledcuda_time / cutlass_time << std::endl;
+         << "]\t" << cublas_time << "(ms)\t" << cutlass_time << "(ms)\t"
+         << tiledcuda_time << "(ms)\t" << cutlass_time / cublas_time << "\t"
+         << tiledcuda_time / cublas_time << std::endl;
 }
 
 int main() {
@@ -149,11 +163,13 @@ int main() {
     fout.open(file_name.str(), std::ios::out);
 
     std::cout << "[M, N, K]\t[kTM, kTN, kTK]\t[kWarpPerRow, kWarpPerCol]\t"
-                 "CutlassTime(ms)\tTiledCUDATime(ms)\tRatio"
+                 "CublasTime(ms)\tCutlassTime(ms)\tTiledCUDATime(ms)\t"
+                 "CutlassRatio\tTiledCUDARatio"
               << std::endl;
 
     fout << "[M, N, K]\t[kTM, kTN, kTK]\t[kWarpPerRow, kWarpPerCol]\t"
-            "CutlassTime(ms)\tTiledCUDATime(ms)\tRatio"
+            "CublasTime(ms)\tCutlassTime(ms)\tTiledCUDATime(ms)\t"
+            "CutlassRatio\tTiledCUDARatio"
          << std::endl;
 
     run_test_v2(fout);
